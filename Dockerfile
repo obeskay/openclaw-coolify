@@ -29,8 +29,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     sqlite3 \
     pass \
     chromium \
+    chromium-driver \
+    fonts-liberation \
     && rm -rf /var/lib/apt/lists/*
 
+RUN systemctl mask polkit.service || true
 # Install Docker CE CLI (Latest) to support API 1.44+
 RUN install -m 0755 -d /etc/apt/keyrings && \
     curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc && \
