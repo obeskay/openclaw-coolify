@@ -85,6 +85,18 @@ RUN --mount=type=cache,target=/data/.npm \
     npm install -g openclaw; \
     fi
 
+# Verify openclaw binary exists and create symlink if needed
+RUN OPENCLAW_BIN=$(npm root -g)/../bin/openclaw && \
+    if [ -f "$OPENCLAW_BIN" ]; then \
+    ln -sf "$OPENCLAW_BIN" /usr/local/bin/openclaw; \
+    echo "✅ OpenClaw binary linked to /usr/local/bin/openclaw"; \
+    elif command -v openclaw &> /dev/null; then \
+    echo "✅ OpenClaw already in PATH at $(which openclaw)"; \
+    else \
+    echo "⚠️ OpenClaw binary not found, checking npm global..." && \
+    ls -la $(npm root -g)/../bin/ 2>/dev/null || true; \
+    fi
+
 # Install uv explicitly (FIXED: using astral-sh official installer)
 RUN curl -LsSf https://astral.sh/uv/install.sh | sh
 
@@ -102,10 +114,21 @@ FROM dependencies AS final
 WORKDIR /app
 COPY . .
 
-# Symlinks
+# Symlinks and ensure openclaw is accessible
 RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
-    chmod +x /app/scripts/*.sh
+    chmod +x /app/scripts/*.sh && \
+    # Ensure openclaw binary is linked from npm global to /usr/local/bin
+    OPENCLAW_BIN=$(npm root -g)/../bin/openclaw; \
+    if [ -f "$OPENCLAW_BIN" ]; then \
+        ln -sf "$OPENCLAW_BIN" /usr/local/bin/openclaw; \
+        echo "✅ OpenClaw linked: /usr/local/bin/openclaw -> $OPENCLAW_BIN"; \
+    fi
 
-ENV PATH="/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/usr/local/bin:/usr/bin:/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin"
+# Include npm global bin in PATH
+ENV PATH="/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/usr/local/bin:/usr/local/lib/node_modules/.bin:/usr/bin:/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:$(npm root -g)/../bin"
+
+# Verify openclaw is available
+RUN which openclaw && openclaw --version || echo "⚠️ OpenClaw version check failed"
+
 EXPOSE 18789
 CMD ["bash", "/app/scripts/bootstrap.sh"]
