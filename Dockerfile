@@ -77,14 +77,12 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
 # Ensure global npm bin is in PATH
 ENV PATH="/usr/local/bin:/usr/local/lib/node_modules/.bin:${PATH}"
 
-# OpenClaw (npm install) - FIXED with verification
+# OpenClaw (npm install) - FIXED for npm 9+
 RUN --mount=type=cache,target=/data/.npm \
-    npm config set unsafe-perm true && \
-    npm config set loglevel verbose && \
     if [ "$OPENCLAW_BETA" = "true" ]; then \
-        npm install -g openclaw@beta; \
+        npm install -g openclaw@beta --legacy-peer-deps; \
     else \
-        npm install -g openclaw; \
+        npm install -g openclaw --legacy-peer-deps; \
     fi && \
     echo "=== Verifying openclaw installation ===" && \
     which openclaw && openclaw --version
