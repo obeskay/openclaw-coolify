@@ -77,13 +77,17 @@ RUN --mount=type=cache,target=/data/.bun/install/cache \
 # Ensure global npm bin is in PATH
 ENV PATH="/usr/local/bin:/usr/local/lib/node_modules/.bin:${PATH}"
 
-# OpenClaw (npm install)
+# OpenClaw (npm install) - FIXED with verification
 RUN --mount=type=cache,target=/data/.npm \
+    npm config set unsafe-perm true && \
+    npm config set loglevel verbose && \
     if [ "$OPENCLAW_BETA" = "true" ]; then \
-    npm install -g openclaw@beta; \
+        npm install -g openclaw@beta; \
     else \
-    npm install -g openclaw; \
-    fi
+        npm install -g openclaw; \
+    fi && \
+    echo "=== Verifying openclaw installation ===" && \
+    which openclaw && openclaw --version
 
 # Verify openclaw binary exists and create symlink if needed
 RUN OPENCLAW_BIN=$(npm root -g)/../bin/openclaw && \
@@ -127,8 +131,8 @@ RUN ln -sf /data/.claude/bin/claude /usr/local/bin/claude || true && \
 # Include npm global bin in PATH
 ENV PATH="/root/.local/bin:/root/.cargo/bin:/usr/local/go/bin:/usr/local/bin:/usr/local/lib/node_modules/.bin:/usr/bin:/bin:/data/.bun/bin:/data/.bun/install/global/bin:/data/.claude/bin:$(npm root -g)/../bin"
 
-# Verify openclaw is available
-RUN which openclaw && openclaw --version || echo "⚠️ OpenClaw version check failed"
+# Verify openclaw is available - FAIL BUILD IF MISSING
+RUN which openclaw && openclaw --version || (echo "❌ OPENCLAW INSTALLATION FAILED - BUILD ABORTED" && exit 1)
 
 EXPOSE 18789
 CMD ["bash", "/app/scripts/bootstrap.sh"]
